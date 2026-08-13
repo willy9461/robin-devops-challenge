@@ -1,0 +1,28 @@
+# Node / pnpm
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+
+# Env files (nunca versionar secretos/config local)
+.env
+.env.local
+.env.*.local
+
+# Vite build
+frontend/dist/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
