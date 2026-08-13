@@ -22,6 +22,14 @@ module "database" {
   project_id = var.project_id
   region     = var.region
   network_id = module.networking.network_id
+
+  # Dependencia explícita: la instancia de Cloud SQL con IP privada
+  # necesita que la conexión de Private Service Access ya esté establecida,
+  # pero Terraform no detecta esa dependencia solo a través de network_id
+  # (son recursos distintos dentro del módulo networking). Sin este
+  # depends_on, a veces Terraform intenta crear la instancia antes de que
+  # el peering termine de propagarse.
+  depends_on = [module.networking]
 }
 
 module "cloud_run" {
