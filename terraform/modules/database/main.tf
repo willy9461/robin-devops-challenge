@@ -3,7 +3,7 @@
 # Cloud SQL Postgres con IP privada únicamente (sin IP pública). La
 # password se genera con random_password y se guarda en Secret Manager —
 # el módulo cloud-run la inyecta al backend vía secret_env_vars, nunca
-# como variable de entorno plana (mejora respecto al challenge anterior).
+# como variable de entorno plana (mejor práctica de seguridad).
 #
 # Depende de que la Private Service Access connection del módulo
 # networking ya exista.

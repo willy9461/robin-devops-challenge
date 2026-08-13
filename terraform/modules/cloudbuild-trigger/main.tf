@@ -29,6 +29,13 @@ resource "google_cloudbuild_trigger" "backend" {
   # location = var.region acá causaba "Error 400: Request contains an
   # invalid argument" al crear el trigger.
 
+  # La política de la organización exige una SA explícita para ejecutar el
+  # build (no usa la SA default de Cloud Build). Reutilizamos la SA de
+  # runtime del backend, que ya tiene los roles necesarios (artifact
+  # writer, run admin, service account user) para buildear, pushear la
+  # imagen y desplegarse a sí misma.
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.backend_service_account_email}"
+
   github {
     owner = var.repo_owner
     name  = var.repo_name
@@ -62,6 +69,8 @@ resource "google_cloudbuild_trigger" "backend" {
 resource "google_cloudbuild_trigger" "frontend" {
   project = var.project_id
   name    = "${var.trigger_name_prefix}-frontend"
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.frontend_service_account_email}"
 
   github {
     owner = var.repo_owner

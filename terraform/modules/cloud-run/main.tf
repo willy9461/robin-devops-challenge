@@ -5,9 +5,8 @@
 # solo llama al backend por su URL pública HTTPS).
 #
 # lifecycle.ignore_changes en la imagen: el primer apply usa una imagen
-# placeholder, los deploys reales los hace el CI/CD (Cloud Build) después
-# — mismo patrón que el challenge anterior, para que `terraform plan` no
-# intente revertir esos deploys.
+# placeholder, los deploys reales los hace el CI/CD (Cloud Build) después,
+# para que `terraform plan` no intente revertir esos deploys.
 
 resource "google_cloud_run_v2_service" "backend" {
   project  = var.project_id
