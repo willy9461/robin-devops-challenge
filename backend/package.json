@@ -1,0 +1,17 @@
+{
+  "name": "robin-challenge-backend",
+  "version": "1.0.0",
+  "description": "Project Tracker API - backend (Express + Postgres)",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "packageManager": "pnpm@10.5.2",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0",
+    "cors": "^2.8.5"
+  }
+}
