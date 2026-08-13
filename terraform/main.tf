@@ -1,7 +1,6 @@
-# Root module — conecta los módulos entre sí. A diferencia del challenge
-# anterior (6 workspaces separados, outputs copiados a mano), acá todo
-# vive en un único workspace: las referencias entre módulos son
-# automáticas vía module.<nombre>.<output>.
+# Root module — conecta los módulos entre sí: las referencias entre
+# módulos son automáticas vía module.<nombre>.<output>, resueltas por
+# Terraform dentro de un único workspace.
 
 module "networking" {
   source = "./modules/networking"

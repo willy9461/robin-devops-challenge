@@ -3,8 +3,7 @@
 # Artifact Registry (donde van las imágenes) + 2 triggers de Cloud Build
 # (uno para frontend, uno para backend — mismo repo, carpetas distintas),
 # disparados por push de TAG, con los steps de build/push/deploy inline en
-# HCL (sin cloudbuild.yaml en el repo, mismo patrón que el challenge
-# anterior).
+# HCL (sin cloudbuild.yaml en el repo).
 #
 # Requiere que el repo de la app ya esté conectado a Cloud Build (paso
 # manual, una sola vez, documentado en el README).
@@ -45,6 +44,13 @@ resource "google_cloudbuild_trigger" "backend" {
   }
 
   build {
+    # Requerido al usar una service_account custom: Cloud Build necesita
+    # que se especifique explícitamente el destino de los logs (no puede
+    # usar el bucket legacy por defecto en ese caso).
+    options {
+      logging = "CLOUD_LOGGING_ONLY"
+    }
+
     step {
       name = "gcr.io/cloud-builders/docker"
       args = ["build", "-t", "${local.backend_image}:$TAG_NAME", "-f", "backend/Dockerfile", "backend"]
@@ -81,6 +87,10 @@ resource "google_cloudbuild_trigger" "frontend" {
   }
 
   build {
+    options {
+      logging = "CLOUD_LOGGING_ONLY"
+    }
+
     step {
       name = "gcr.io/cloud-builders/docker"
       args = [
