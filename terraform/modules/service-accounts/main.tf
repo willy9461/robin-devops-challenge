@@ -4,8 +4,7 @@
 # producción). La SA de DEPLOY (terraform-deployer, la que usa el
 # workspace de Terraform Cloud vía GOOGLE_CREDENTIALS) no la crea este
 # módulo: no puede crearse a sí misma antes de existir — se crea a mano,
-# una sola vez, documentado en el README (mismo patrón que el challenge
-# anterior).
+# una sola vez, documentado en el README.
 #
 # Dos SAs separadas por mínimo privilegio: el frontend no necesita tocar
 # la DB ni Secret Manager, así que no los tiene.
