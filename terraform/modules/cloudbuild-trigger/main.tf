@@ -22,9 +22,12 @@ locals {
 }
 
 resource "google_cloudbuild_trigger" "backend" {
-  project  = var.project_id
-  name     = "${var.trigger_name_prefix}-backend"
-  location = var.region
+  project = var.project_id
+  name    = "${var.trigger_name_prefix}-backend"
+  # Sin `location`: los triggers conectados vía GitHub App clásico (1st
+  # gen) solo viven en "global", no en regiones específicas. Poner
+  # location = var.region acá causaba "Error 400: Request contains an
+  # invalid argument" al crear el trigger.
 
   github {
     owner = var.repo_owner
@@ -57,9 +60,8 @@ resource "google_cloudbuild_trigger" "backend" {
 }
 
 resource "google_cloudbuild_trigger" "frontend" {
-  project  = var.project_id
-  name     = "${var.trigger_name_prefix}-frontend"
-  location = var.region
+  project = var.project_id
+  name    = "${var.trigger_name_prefix}-frontend"
 
   github {
     owner = var.repo_owner
