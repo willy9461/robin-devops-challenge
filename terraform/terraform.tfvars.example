@@ -1,0 +1,5 @@
+# Copiar a terraform.tfvars para desarrollo local (no versionar el real).
+# En Terraform Cloud (VCS-driven) estas mismas variables se cargan como
+# "Terraform variables" en la UI del workspace, no en un archivo.
+project_id = "challenge-504820"
+region     = "us-central1"

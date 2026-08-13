@@ -1,0 +1,60 @@
+# Root module — conecta los módulos entre sí. A diferencia del challenge
+# anterior (6 workspaces separados, outputs copiados a mano), acá todo
+# vive en un único workspace: las referencias entre módulos son
+# automáticas vía module.<nombre>.<output>.
+
+module "networking" {
+  source = "./modules/networking"
+
+  project_id = var.project_id
+  region     = var.region
+}
+
+module "service_accounts" {
+  source = "./modules/service-accounts"
+
+  project_id = var.project_id
+}
+
+module "database" {
+  source = "./modules/database"
+
+  project_id = var.project_id
+  region     = var.region
+  network_id = module.networking.network_id
+}
+
+module "cloud_run" {
+  source = "./modules/cloud-run"
+
+  project_id   = var.project_id
+  region       = var.region
+  network_name = module.networking.network_name
+  subnet_name  = module.networking.subnet_name
+
+  backend_service_account_email  = module.service_accounts.backend_email
+  frontend_service_account_email = module.service_accounts.frontend_email
+
+  db_host                = module.database.private_ip_address
+  db_name                 = module.database.database_name
+  db_user                 = module.database.db_user_name
+  db_password_secret_id  = module.database.db_password_secret_id
+
+  # frontend_origin queda vacío en el primer apply: la URL del frontend
+  # no existe todavía (dependencia circular). Se completa con un segundo
+  # `terraform apply` una vez conocida (ver README, sección de mejoras).
+}
+
+module "cloudbuild_trigger" {
+  source = "./modules/cloudbuild-trigger"
+
+  project_id = var.project_id
+  region     = var.region
+
+  backend_service_account_email  = module.service_accounts.backend_email
+  frontend_service_account_email = module.service_accounts.frontend_email
+
+  backend_service_name  = module.cloud_run.backend_service_name
+  frontend_service_name = module.cloud_run.frontend_service_name
+  backend_url            = module.cloud_run.backend_url
+}
