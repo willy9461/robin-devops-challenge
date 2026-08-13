@@ -42,8 +42,56 @@ resource "google_project_iam_member" "backend_log_writer" {
   member  = "serviceAccount:${google_service_account.app_backend.email}"
 }
 
+resource "google_project_iam_member" "backend_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.app_backend.email}"
+}
+
+resource "google_project_iam_member" "backend_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.app_backend.email}"
+}
+
+resource "google_project_iam_member" "backend_sa_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.app_backend.email}"
+}
+
+resource "google_project_iam_member" "backend_cloudbuild_builder" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${google_service_account.app_backend.email}"
+}
+
+resource "google_project_iam_member" "frontend_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.app_frontend.email}"
+}
+
 resource "google_project_iam_member" "frontend_log_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.app_frontend.email}"
+}
+
+resource "google_project_iam_member" "frontend_cloudbuild_builder" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${google_service_account.app_frontend.email}"
+}
+
+resource "google_project_iam_member" "frontend_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.app_frontend.email}"
+}
+
+resource "google_project_iam_member" "frontend_sa_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
   member  = "serviceAccount:${google_service_account.app_frontend.email}"
 }

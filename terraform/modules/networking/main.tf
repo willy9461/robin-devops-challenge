@@ -1,8 +1,8 @@
 # Módulo: networking
 #
 # VPC + subnet + firewall rules + Private Service Access, para que Cloud
-# SQL pueda tener IP privada dentro de esta VPC. Mismo patrón probado en
-# el challenge anterior, sin bloque provider{} (lo define el root module).
+# SQL pueda tener IP privada dentro de esta VPC. Sin bloque provider{}
+# (lo define el root module).
 
 resource "google_compute_network" "vpc" {
   project                 = var.project_id
