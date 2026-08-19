@@ -1,9 +1,9 @@
-output "domain" {
-  description = "Dominio nip.io del load balancer"
-  value       = local.domain
+output "frontend_url" {
+  description = "URL pública del frontend (HTTPS)"
+  value       = "https://${var.frontend_domain}"
 }
 
-output "url" {
-  description = "URL pública completa (HTTPS) — la que se comparte para la entrega"
-  value       = "https://${local.domain}"
+output "backend_url" {
+  description = "URL pública del backend (HTTPS)"
+  value       = "https://${var.backend_domain}"
 }
