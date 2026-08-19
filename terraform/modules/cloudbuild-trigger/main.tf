@@ -29,11 +29,11 @@ resource "google_cloudbuild_trigger" "backend" {
   # invalid argument" al crear el trigger.
 
   # La política de la organización exige una SA explícita para ejecutar el
-  # build (no usa la SA default de Cloud Build). Reutilizamos la SA de
-  # runtime del backend, que ya tiene los roles necesarios (artifact
-  # writer, run admin, service account user) para buildear, pushear la
-  # imagen y desplegarse a sí misma.
-  service_account = "projects/${var.project_id}/serviceAccounts/${var.backend_service_account_email}"
+  # build (no usa la SA default de Cloud Build). Se usa una SA dedicada de
+  # build, separada de la SA de runtime del servicio — la de build tiene
+  # permisos de administración (Artifact Registry, Cloud Run Admin) que
+  # el servicio en producción no debería tener nunca.
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.build_backend_service_account_email}"
 
   github {
     owner = var.repo_owner
@@ -76,7 +76,7 @@ resource "google_cloudbuild_trigger" "frontend" {
   project = var.project_id
   name    = "${var.trigger_name_prefix}-frontend"
 
-  service_account = "projects/${var.project_id}/serviceAccounts/${var.frontend_service_account_email}"
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.build_frontend_service_account_email}"
 
   github {
     owner = var.repo_owner
