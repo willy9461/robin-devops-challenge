@@ -1,27 +1,22 @@
 # Módulo: load-balance
 #
-# Certificado SSL gestionado (dominio nip.io generado a partir de la IP,
-# reservada a nivel raíz — ver comentario en el root main.tf sobre por
-# qué vive ahí y no acá) + un Serverless NEG por servicio + un solo
-# url_map que rutea por path: todo lo que no matchee cae al frontend
-# (default), y las rutas de la API van al backend. Con esto, frontend y
-# backend quedan bajo el mismo origen — el navegador deja de ver CORS
-# como un problema cross-origin.
-
-locals {
-  # nip.io resuelve automáticamente <ip>.nip.io hacia esa misma IP, sin
-  # necesidad de crear ningún registro DNS a mano ni esperar propagación
-  # — por eso se puede pedir el certificado gestionado justo después,
-  # en el mismo apply, sin condición de carrera.
-  domain = "${var.ip_address}.nip.io"
-}
+# Certificado SSL gestionado (cubre 2 dominios nip.io: uno para el
+# frontend, uno para el backend — ambos generados a partir de la IP
+# reservada a nivel raíz) + un Serverless NEG por servicio + un url_map
+# que rutea por HOST: cada subdominio va directo a su propio backend
+# service, sin necesidad de path matching.
+#
+# Frontend y backend quedan en orígenes distintos (subdominios), así que
+# el navegador SÍ trata las llamadas del frontend al backend como
+# cross-origin — por eso el backend restringe su CORS al dominio exacto
+# del frontend (ver root main.tf).
 
 resource "google_compute_managed_ssl_certificate" "cert" {
   project = var.project_id
   name    = "${var.name}-cert"
 
   managed {
-    domains = [local.domain]
+    domains = [var.frontend_domain, var.backend_domain]
   }
 }
 
@@ -69,28 +64,32 @@ resource "google_compute_backend_service" "backend" {
   }
 }
 
-# Un solo host (el dominio nip.io), ruteado por path: /health y
-# /projects* van al backend, todo lo demás (la SPA de React) va al
-# frontend. Es lo que le permite al navegador tratar ambos servicios
-# como un único origen.
+# Ruteo por HOST: cada dominio (subdominio) va directo a su backend
+# service, sin path matching — a diferencia de la versión anterior con
+# un solo dominio ruteado por path.
 resource "google_compute_url_map" "https" {
   project         = var.project_id
   name            = "${var.name}-url-map"
   default_service = google_compute_backend_service.frontend.id
 
   host_rule {
-    hosts        = [local.domain]
-    path_matcher = "main"
+    hosts        = [var.frontend_domain]
+    path_matcher = "frontend"
+  }
+
+  host_rule {
+    hosts        = [var.backend_domain]
+    path_matcher = "backend"
   }
 
   path_matcher {
-    name            = "main"
+    name            = "frontend"
     default_service = google_compute_backend_service.frontend.id
+  }
 
-    path_rule {
-      paths   = ["/health", "/projects", "/projects/*"]
-      service = google_compute_backend_service.backend.id
-    }
+  path_matcher {
+    name            = "backend"
+    default_service = google_compute_backend_service.backend.id
   }
 }
 

@@ -15,7 +15,17 @@ variable "name" {
 }
 
 variable "ip_address" {
-  description = "IP estática reservada a nivel raíz (evita una dependencia circular con cloud-run, que necesita conocer el dominio nip.io antes de que exista este módulo)"
+  description = "IP estática reservada a nivel raíz (evita una dependencia circular con cloud-run, que necesita conocer los dominios nip.io antes de que exista este módulo)"
+  type        = string
+}
+
+variable "frontend_domain" {
+  description = "Dominio nip.io del frontend (calculado a nivel raíz a partir de ip_address)"
+  type        = string
+}
+
+variable "backend_domain" {
+  description = "Dominio nip.io del backend, con prefijo api. (calculado a nivel raíz a partir de ip_address)"
   type        = string
 }
 

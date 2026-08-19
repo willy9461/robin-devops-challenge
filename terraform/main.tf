@@ -3,20 +3,23 @@
 # Terraform dentro de un único workspace.
 
 # La IP del Load Balancer se reserva acá, a nivel raíz, en vez de adentro
-# del módulo load-balance — porque el dominio nip.io que se arma a partir
-# de esta IP hace falta ANTES de crear los servicios de Cloud Run (para
-# poder restringir CORS del backend a ese dominio), pero el módulo
-# load-balance en sí depende de que esos servicios ya existan (necesita
-# sus nombres para armar los NEGs). Reservar la IP acá, compartida por
-# ambos módulos, rompe esa dependencia circular sin necesidad de un
-# segundo apply.
+# del módulo load-balance — porque los dominios nip.io que se arman a
+# partir de esta IP hacen falta ANTES de crear los servicios de Cloud Run
+# (para restringir CORS entre ambos), pero el módulo load-balance en sí
+# depende de que esos servicios ya existan (necesita sus nombres para
+# armar los NEGs). Reservar la IP acá, compartida por ambos módulos,
+# rompe esa dependencia circular sin necesidad de un segundo apply.
 resource "google_compute_global_address" "lb_ip" {
   project = var.project_id
   name    = "robin-lb-ip"
 }
 
 locals {
-  lb_domain = "${google_compute_global_address.lb_ip.address}.nip.io"
+  # Frontend en el dominio raíz, backend en un subdominio — ambos se
+  # calculan solo a partir de la IP reservada arriba, sin depender de
+  # ningún servicio de Cloud Run.
+  frontend_domain = "${google_compute_global_address.lb_ip.address}.nip.io"
+  backend_domain  = "api.${google_compute_global_address.lb_ip.address}.nip.io"
 }
 
 module "networking" {
@@ -64,11 +67,10 @@ module "cloud_run" {
   db_user                 = module.database.db_user_name
   db_password_secret_id  = module.database.db_password_secret_id
 
-  # El dominio se calcula solo a partir de la IP reservada arriba, sin
-  # depender de que exista ningún servicio de Cloud Run — por eso se
-  # puede pasar acá sin generar una dependencia circular con el módulo
-  # load-balance.
-  frontend_origin = "https://${local.lb_domain}"
+  # El backend restringe su CORS al dominio exacto del frontend — ambos
+  # son subdominios distintos ahora, así que sí hace falta (a diferencia
+  # de la versión anterior con ruteo por path bajo un único dominio).
+  frontend_origin = "https://${local.frontend_domain}"
 }
 
 module "cloudbuild_trigger" {
@@ -85,6 +87,11 @@ module "cloudbuild_trigger" {
 
   backend_service_name  = module.cloud_run.backend_service_name
   frontend_service_name = module.cloud_run.frontend_service_name
+
+  # URL pública del backend (vía su subdominio del Load Balancer),
+  # inyectada al frontend como VITE_API_URL en build-time — vuelve a
+  # hacer falta porque frontend y backend ya no comparten origen.
+  backend_api_url = "https://${local.backend_domain}"
 }
 
 module "load_balance" {
@@ -93,6 +100,9 @@ module "load_balance" {
   project_id = var.project_id
   region     = var.region
   ip_address = google_compute_global_address.lb_ip.address
+
+  frontend_domain = local.frontend_domain
+  backend_domain  = local.backend_domain
 
   frontend_service_name = module.cloud_run.frontend_service_name
   backend_service_name  = module.cloud_run.backend_service_name

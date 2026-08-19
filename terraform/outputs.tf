@@ -1,9 +1,14 @@
-output "app_url" {
-  description = "URL pública única (HTTPS, vía Load Balancer) — la que se comparte para la entrega. Sirve tanto el frontend como el backend, ruteados por path bajo el mismo origen."
-  value       = module.load_balance.url
+output "frontend_url" {
+  description = "URL pública del frontend — la que se comparte para la entrega"
+  value       = module.load_balance.frontend_url
+}
+
+output "backend_url" {
+  description = "URL pública del backend — la que se comparte para la entrega"
+  value       = module.load_balance.backend_url
 }
 
 output "load_balancer_ip" {
-  description = "IP estática del Load Balancer"
+  description = "IP estática del Load Balancer (compartida por ambos subdominios)"
   value       = google_compute_global_address.lb_ip.address
 }
