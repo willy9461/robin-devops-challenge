@@ -2,6 +2,23 @@
 # módulos son automáticas vía module.<nombre>.<output>, resueltas por
 # Terraform dentro de un único workspace.
 
+# La IP del Load Balancer se reserva acá, a nivel raíz, en vez de adentro
+# del módulo load-balance — porque el dominio nip.io que se arma a partir
+# de esta IP hace falta ANTES de crear los servicios de Cloud Run (para
+# poder restringir CORS del backend a ese dominio), pero el módulo
+# load-balance en sí depende de que esos servicios ya existan (necesita
+# sus nombres para armar los NEGs). Reservar la IP acá, compartida por
+# ambos módulos, rompe esa dependencia circular sin necesidad de un
+# segundo apply.
+resource "google_compute_global_address" "lb_ip" {
+  project = var.project_id
+  name    = "robin-lb-ip"
+}
+
+locals {
+  lb_domain = "${google_compute_global_address.lb_ip.address}.nip.io"
+}
+
 module "networking" {
   source = "./modules/networking"
 
@@ -46,6 +63,12 @@ module "cloud_run" {
   db_name                 = module.database.database_name
   db_user                 = module.database.db_user_name
   db_password_secret_id  = module.database.db_password_secret_id
+
+  # El dominio se calcula solo a partir de la IP reservada arriba, sin
+  # depender de que exista ningún servicio de Cloud Run — por eso se
+  # puede pasar acá sin generar una dependencia circular con el módulo
+  # load-balance.
+  frontend_origin = "https://${local.lb_domain}"
 }
 
 module "cloudbuild_trigger" {
@@ -62,5 +85,15 @@ module "cloudbuild_trigger" {
 
   backend_service_name  = module.cloud_run.backend_service_name
   frontend_service_name = module.cloud_run.frontend_service_name
-  backend_url            = module.cloud_run.backend_url
+}
+
+module "load_balance" {
+  source = "./modules/load-balance"
+
+  project_id = var.project_id
+  region     = var.region
+  ip_address = google_compute_global_address.lb_ip.address
+
+  frontend_service_name = module.cloud_run.frontend_service_name
+  backend_service_name  = module.cloud_run.backend_service_name
 }

@@ -50,11 +50,6 @@ variable "frontend_service_name" {
   type        = string
 }
 
-variable "backend_url" {
-  description = "URL pública del backend (output del módulo cloud-run), inyectada al frontend como VITE_API_URL en build-time"
-  type        = string
-}
-
 variable "artifact_registry_repo" {
   description = "Nombre del repo de Artifact Registry para las imágenes"
   type        = string

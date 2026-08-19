@@ -73,7 +73,6 @@ variable "db_password_secret_id" {
 }
 
 variable "frontend_origin" {
-  description = "URL pública del frontend, para restringir CORS en el backend. Vacío en el primer apply (todavía no existe la URL); se completa en un segundo apply una vez conocida."
+  description = "URL del dominio del Load Balancer, para restringir CORS del backend a ese origen específico (en vez del wildcard *)"
   type        = string
-  default     = ""
 }

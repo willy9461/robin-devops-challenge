@@ -1,7 +1,10 @@
-// URL del backend, configurable por env var. En dev local apunta al backend
-// de docker-compose (localhost:8080). En producción, Vite la inyecta en
-// build-time desde VITE_API_URL (variable de CI/CD, no hardcodeada).
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// URL del backend, configurable por env var. En producción (detrás del
+// Load Balancer), el frontend y el backend quedan bajo el mismo origen
+// (ruteados por path), así que no hace falta URL absoluta — el default
+// vacío hace que el fetch sea relativo al origen actual. En desarrollo
+// local (pnpm dev, sin Load Balancer), hay que setear VITE_API_URL
+// explícitamente en un .env.local (ver .env.example).
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
