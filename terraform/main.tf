@@ -46,10 +46,6 @@ module "cloud_run" {
   db_name                 = module.database.database_name
   db_user                 = module.database.db_user_name
   db_password_secret_id  = module.database.db_password_secret_id
-
-  # frontend_origin queda vacío en el primer apply: la URL del frontend
-  # no existe todavía (dependencia circular). Se completa con un segundo
-  # `terraform apply` una vez conocida (ver README, sección de mejoras).
 }
 
 module "cloudbuild_trigger" {
@@ -60,6 +56,9 @@ module "cloudbuild_trigger" {
 
   backend_service_account_email  = module.service_accounts.backend_email
   frontend_service_account_email = module.service_accounts.frontend_email
+
+  build_backend_service_account_email  = module.service_accounts.build_backend_email
+  build_frontend_service_account_email = module.service_accounts.build_frontend_email
 
   backend_service_name  = module.cloud_run.backend_service_name
   frontend_service_name = module.cloud_run.frontend_service_name

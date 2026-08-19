@@ -21,12 +21,22 @@ variable "repo_name" {
 }
 
 variable "backend_service_account_email" {
-  description = "Email de la SA de runtime del backend (para el gcloud run deploy)"
+  description = "Email de la SA de runtime del backend (identidad con la que corre el servicio desplegado, usada en gcloud run deploy)"
   type        = string
 }
 
 variable "frontend_service_account_email" {
-  description = "Email de la SA de runtime del frontend (para el gcloud run deploy)"
+  description = "Email de la SA de runtime del frontend (identidad con la que corre el servicio desplegado, usada en gcloud run deploy)"
+  type        = string
+}
+
+variable "build_backend_service_account_email" {
+  description = "Email de la SA de build del backend (ejecutor del trigger en sí, distinto de la SA de runtime)"
+  type        = string
+}
+
+variable "build_frontend_service_account_email" {
+  description = "Email de la SA de build del frontend (ejecutor del trigger en sí, distinto de la SA de runtime)"
   type        = string
 }
 
