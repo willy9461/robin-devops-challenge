@@ -97,7 +97,6 @@ resource "google_cloudbuild_trigger" "frontend" {
         "build",
         "-t", "${local.frontend_image}:$TAG_NAME",
         "-f", "frontend/Dockerfile",
-        "--build-arg", "VITE_API_URL=${var.backend_url}",
         "frontend",
       ]
     }
