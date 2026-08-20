@@ -15,6 +15,14 @@ resource "google_cloud_run_v2_service" "backend" {
   project  = var.project_id
   name     = var.backend_service_name
   location = var.region
+  # Explícito en "ALL", no simplemente omitido: este campo es
+  # Optional+Computed en el provider de Google — si se omite la línea en
+  # vez de ponerla en un valor concreto, Terraform interpreta "dejar de
+  # gestionar este campo" y NO revierte al default, sino que deja el
+  # valor real que ya estuviera en GCP (en este caso, se había quedado
+  # trabado en INTERNAL_LOAD_BALANCER de un cambio anterior, a pesar de
+  # que el apply reportaba "Updated" sin error).
+  ingress = "INGRESS_TRAFFIC_ALL"
 
   template {
     service_account = var.backend_service_account_email
@@ -72,6 +80,7 @@ resource "google_cloud_run_v2_service" "frontend" {
   project  = var.project_id
   name     = var.frontend_service_name
   location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
     service_account = var.frontend_service_account_email
