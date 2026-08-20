@@ -11,6 +11,18 @@
 # placeholder, los deploys reales los hace el CI/CD (Cloud Build) después,
 # para que `terraform plan` no intente revertir esos deploys.
 
+# GCP genera 2 URLs distintas para el mismo servicio de Cloud Run (una
+# con hash, otra con el número de proyecto) — se necesita el número para
+# poder armar la segunda a mano, ya que el output .uri del recurso solo
+# expone la primera.
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+locals {
+  frontend_alt_url = "https://${var.frontend_service_name}-${data.google_project.current.number}.${var.region}.run.app"
+}
+
 resource "google_cloud_run_v2_service" "backend" {
   project  = var.project_id
   name     = var.backend_service_name
@@ -47,13 +59,13 @@ resource "google_cloud_run_v2_service" "backend" {
         value = var.db_user
       }
       env {
-        # Se combinan 2 orígenes: el dominio del Load Balancer (el
-        # camino "real" de la app) y la URL raw de Cloud Run del
-        # frontend (sigue respondiendo en paralelo por decisión propia,
-        # así que también queda funcional). El backend ya soporta una
-        # lista separada por comas.
+        # Se combinan 3 orígenes: el dominio del Load Balancer (el
+        # camino "real" de la app), y las 2 URLs raw de Cloud Run del
+        # frontend que genera GCP para el mismo servicio (una con hash,
+        # otra con el número de proyecto) — ambas siguen respondiendo en
+        # paralelo por decisión propia, así que quedan funcionales.
         name  = "FRONTEND_ORIGIN"
-        value = "${var.frontend_origin},${google_cloud_run_v2_service.frontend.uri}"
+        value = "${var.frontend_origin},${google_cloud_run_v2_service.frontend.uri},${local.frontend_alt_url}"
       }
 
       env {
