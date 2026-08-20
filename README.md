@@ -196,6 +196,17 @@ Every change (app code, each Terraform fix) was made on a separate
 branch, with a Pull Request into `main`, and only once that commit was
 merged was the tag created that triggers the actual deploy.
 
+### Backend runs on a distroless, non-root image
+The backend's final image uses `gcr.io/distroless/nodejs22-debian12:nonroot`
+instead of `node:22-alpine` directly. An earlier stage (with
+`node:22-alpine`, which does have a shell and `pnpm`) resolves production
+dependencies; the final image only copies `node_modules`, `package.json`,
+and `src/` — no build code, no dev tooling. The distroless image has no
+shell and no package manager: if someone managed to run arbitrary code
+inside the container, they'd have nothing to work with (no `sh`, no
+`apk`/`apt`). The `:nonroot` tag runs as UID 65532 by default, no need to
+create a user by hand.
+
 ### DB password via Secret Manager
 The Cloud SQL password is generated with `random_password`, stored in
 Secret Manager, and injected into the backend on Cloud Run via
@@ -273,6 +284,13 @@ every real `apply`. When something failed against the real GCP API, I
 asked for the specific fix, validated it again, and applied it through
 the same branch+PR+tag flow as the rest of the code — I never applied a
 fix "blindly" without at least one verifiable hypothesis about the cause.
+
+One case where this paid off: when migrating the backend to a distroless
+image, instead of writing the Dockerfile directly (like the first
+attempts, which then failed on the real `apply`), we first checked
+official documentation for concrete details — the image's entrypoint,
+how it handles the non-root user — before touching any code. It worked
+on the first try, with no follow-up fix needed.
 
 ### Cases where the AI got something wrong or fell short, and how it was solved
 These are the 7 real cases, in the order they happened:
