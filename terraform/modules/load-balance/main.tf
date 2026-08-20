@@ -13,10 +13,20 @@
 
 resource "google_compute_managed_ssl_certificate" "cert" {
   project = var.project_id
-  name    = "${var.name}-cert"
+  # El nombre incluye un hash de los dominios que cubre: si los dominios
+  # cambian en el futuro, el nombre cambia con ellos, y Terraform puede
+  # crear el certificado nuevo ANTES de borrar el viejo (nombres
+  # distintos, sin colisión), en vez de intentar borrar el viejo primero
+  # mientras el proxy todavía lo está usando — el error real que dio acá
+  # ("resourceInUseByAnotherResource") cuando el nombre no cambiaba.
+  name = "${var.name}-cert-${substr(md5(join(",", [var.frontend_domain, var.backend_domain])), 0, 8)}"
 
   managed {
     domains = [var.frontend_domain, var.backend_domain]
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
