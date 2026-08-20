@@ -47,8 +47,13 @@ resource "google_cloud_run_v2_service" "backend" {
         value = var.db_user
       }
       env {
+        # Se combinan 2 orígenes: el dominio del Load Balancer (el
+        # camino "real" de la app) y la URL raw de Cloud Run del
+        # frontend (sigue respondiendo en paralelo por decisión propia,
+        # así que también queda funcional). El backend ya soporta una
+        # lista separada por comas.
         name  = "FRONTEND_ORIGIN"
-        value = var.frontend_origin
+        value = "${var.frontend_origin},${google_cloud_run_v2_service.frontend.uri}"
       }
 
       env {
