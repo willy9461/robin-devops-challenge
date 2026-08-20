@@ -1,11 +1,11 @@
 # Módulo: cloud-run
 #
 # 2 servicios: backend (con Direct VPC Egress para llegar a Cloud SQL
-# privada, sin conector separado) y frontend. Ambos con ingress
-# restringido a tráfico que llega vía el Load Balancer (módulo
-# load-balance) — no aceptan tráfico directo a su URL *.run.app, así el
-# Load Balancer queda como único camino de entrada real, y frontend +
-# backend quedan bajo el mismo origen (sin necesidad de configurar CORS).
+# privada, sin conector separado) y frontend. Ambos aceptan tráfico tanto
+# vía el Load Balancer (módulo load-balance) como directo a su URL
+# *.run.app — a diferencia de una versión anterior que restringía el
+# ingress solo al Load Balancer, se decidió mantener ambos caminos
+# accesibles en paralelo.
 #
 # lifecycle.ignore_changes en la imagen: el primer apply usa una imagen
 # placeholder, los deploys reales los hace el CI/CD (Cloud Build) después,
@@ -15,7 +15,6 @@ resource "google_cloud_run_v2_service" "backend" {
   project  = var.project_id
   name     = var.backend_service_name
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
     service_account = var.backend_service_account_email
@@ -73,7 +72,6 @@ resource "google_cloud_run_v2_service" "frontend" {
   project  = var.project_id
   name     = var.frontend_service_name
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
     service_account = var.frontend_service_account_email
@@ -92,10 +90,6 @@ resource "google_cloud_run_v2_service" "frontend" {
   }
 }
 
-# El Load Balancer llega a estos servicios sin autenticación OIDC propia
-# (reenvía como tráfico "anónimo" desde la perspectiva de Cloud Run), así
-# que igual hace falta este binding — sin él, Cloud Run v2 exige IAM
-# explícito por defecto y el Load Balancer no podría invocarlos.
 resource "google_cloud_run_v2_service_iam_member" "backend_public" {
   project  = var.project_id
   location = var.region
