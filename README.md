@@ -46,7 +46,7 @@ flowchart TB
         Frontend["Cloud Run: frontend"]
         SM["Secret Manager<br/>(DB password)"]
         AR["Artifact Registry<br/>(images)"]
-        CB["Cloud Build<br/>(2 triggers, tag-based)"]
+        CB["Cloud Build<br/>(2 triggers, per-service tag)"]
 
         SM -.->|injects password| Backend
         CB -->|build + push| AR
@@ -54,7 +54,7 @@ flowchart TB
         AR -->|deploy| Frontend
     end
 
-    GitHub["GitHub<br/>(push tag vX.Y.Z)"]
+    GitHub["GitHub<br/>(push backend-vX.Y.Z or<br/>frontend-vX.Y.Z)"]
 
     Internet -->|"HTTPS (LB domain)"| LB
     Internet -->|"HTTPS (direct URL)"| Frontend
@@ -66,17 +66,19 @@ flowchart TB
 
 **Two access paths, on purpose:** both Cloud Run services have
 `ingress = ALL`, so they accept traffic both through the Load Balancer
-and directly at their `*.run.app` URL. The decision to keep direct access
-open (instead of restricting it to only the Load Balancer) was to keep
-the URLs shared in the original challenge submission working in parallel
-with the new architecture, without breaking anything already delivered.
+and directly at their `*.run.app` URL. The Load Balancer's domain is the
+one meant for real usage — stable, backed by a managed certificate, with
+CORS scoped to it explicitly. The direct Cloud Run URLs stay reachable
+too, useful for quickly checking a service in isolation without going
+through the Load Balancer layer.
 
 **Data flow:** the backend is the only component with access to the
 database, via **Direct VPC Egress** (no separate connector), and the DB
 only has a private IP, with no exposure to the internet.
 
-**CI/CD flow:** a push of tag `vX.Y.Z` triggers the build, push to
-Artifact Registry, and deploy to Cloud Run for both services.
+**CI/CD flow:** a push of a service-specific tag (`backend-vX.Y.Z` or
+`frontend-vX.Y.Z`) triggers the build, push to Artifact Registry, and
+deploy to Cloud Run for that one service — the other is left untouched.
 
 ---
 
@@ -90,7 +92,7 @@ Artifact Registry, and deploy to Cloud Run for both services.
 | Infrastructure | Terraform Cloud (VCS-driven), GCP |
 | Compute | Cloud Run (2 services: frontend, backend) |
 | Load Balancer | Global HTTPS, host-based routing (subdomains), managed cert (nip.io) |
-| CI/CD | Cloud Build, 2 tag-triggered triggers |
+| CI/CD | Cloud Build, 2 triggers (independent per-service tags) |
 | Secrets | Secret Manager (DB password) |
 
 ---
@@ -121,8 +123,8 @@ Open `http://localhost:5173`.
 ## Decisions and why
 
 ### A single repo, no modules published to an external Registry
-The 5 Terraform modules (`networking`, `service-accounts`, `database`,
-`cloud-run`, `cloudbuild-trigger`) live as folders inside
+The 6 Terraform modules (`networking`, `service-accounts`, `database`,
+`cloud-run`, `cloudbuild-trigger`, `load-balance`) live as folders inside
 `terraform/modules/`, in the same repo as the app. Publishing them to a
 module Registry only pays off when several different teams or projects
 are going to consume them as an external dependency — here there's a
@@ -130,7 +132,7 @@ single consumer (this same repo), so adding that layer would be
 complexity without real benefit.
 
 ### A single VCS-driven Terraform Cloud workspace
-All 5 modules run in a single workspace connected via VCS to the repo.
+All 6 modules run in a single workspace connected via VCS to the repo.
 References between modules (`module.networking.network_id`, etc.)
 resolve automatically within the same `apply`, with no need to copy
 outputs by hand between separate workspaces.
@@ -177,24 +179,35 @@ wildcard.
 
 ### Keeping direct Cloud Run access enabled
 Both services have `ingress = ALL` instead of restricting it to only the
-Load Balancer. The reason: the Cloud Run URLs had already been shared as
-part of the original challenge submission, and the decision was to keep
-them working in parallel with the new architecture, rather than closing
-them off. The backend explicitly allows the 3 real origins a frontend
-request can come from (the Load Balancer's domain, and the 2 URL
-variants Cloud Run auto-generates for the same service) — still no
-wildcard, just a longer list of concrete, known origins.
+Load Balancer. This keeps the direct `*.run.app` URLs usable alongside
+the Load Balancer's — handy for isolating a single service during
+debugging, without going through the routing layer. The backend
+explicitly allows the 3 real origins a frontend request can come from
+(the Load Balancer's domain, and the 2 URL variants Cloud Run
+auto-generates for the same service) — still no wildcard, just a longer
+list of concrete, known origins.
 
-### Tag-triggered CI/CD
-The pipeline is triggered by a tag push (`vX.Y.Z`) on a commit already
-merged into `main`, rather than on every direct push. It separates
-"integrated code" from "published version," giving an explicit checkpoint
-before each release.
+### Per-service tags for independent deploys
+Each service has its own tag prefix (`backend-vX.Y.Z`, `frontend-vX.Y.Z`)
+instead of a single shared pattern. Pushing `backend-v1.0.1` triggers
+only the backend's Cloud Build pipeline — the frontend isn't touched at
+all, no rebuild, no new revision. This is a deliberate move away from
+"one tag redeploys everything," inspired by how tools like Lerna or
+Changesets version each package independently in a monorepo. It avoids
+adding path-based change detection logic inside Cloud Build itself
+(which the connected GitHub App generation doesn't support natively),
+at the cost of needing two separate tags if you want both services
+redeployed together. Terraform Cloud's own VCS trigger (configured in
+the workspace settings, not in code) matches either prefix
+(`^(backend|frontend)-v[0-9]+\.[0-9]+\.[0-9]+$`), so any release tag —
+whichever service it targets — still runs an infrastructure plan too.
 
 ### Git flow: branch → PR → merge → tag
 Every change (app code, each Terraform fix) was made on a separate
 branch, with a Pull Request into `main`, and only once that commit was
-merged was the tag created that triggers the actual deploy.
+merged was the tag created that triggers the actual deploy. The tag
+itself is a deliberate checkpoint — it separates "integrated code" from
+"published version," rather than deploying automatically on every merge.
 
 ### Backend runs on a distroless, non-root image
 The backend's final image uses `gcr.io/distroless/nodejs22-debian12:nonroot`
@@ -234,8 +247,8 @@ or in the code.
   a Cloud Build deploy that already landed.
 - **Consolidate to a single canonical domain:** right now there are 3
   valid origins for the frontend (the Load Balancer's and 2 Cloud Run
-  variants) — a deliberate choice to avoid breaking already-shared URLs,
-  but in a real project I'd prefer one stable domain from the start.
+  variants) — useful for debugging flexibility, but in a real project
+  I'd prefer one stable domain from the start.
 
 ---
 
@@ -250,9 +263,9 @@ git flow. I document the most significant points here.
 - Generate the backend skeleton and code (Express + Postgres) and the
   frontend (React + Vite) from scratch, including multi-stage
   Dockerfiles.
-- Design and write the 5 Terraform modules (networking,
-  service-accounts, database, cloud-run, cloudbuild-trigger) and the
-  root module connecting them.
+- Design and write the 6 Terraform modules (networking,
+  service-accounts, database, cloud-run, cloudbuild-trigger,
+  load-balance) and the root module connecting them.
 - Debug, in real time, every error from the first real `apply` against
   GCP (see cases below) — reading logs, forming hypotheses, verifying
   them against the GCP console before applying a fix.
