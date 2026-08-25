@@ -39,7 +39,7 @@ resource "google_cloudbuild_trigger" "backend" {
     owner = var.repo_owner
     name  = var.repo_name
     push {
-      tag = var.tag_pattern
+      tag = var.backend_tag_pattern
     }
   }
 
@@ -82,7 +82,7 @@ resource "google_cloudbuild_trigger" "frontend" {
     owner = var.repo_owner
     name  = var.repo_name
     push {
-      tag = var.tag_pattern
+      tag = var.frontend_tag_pattern
     }
   }
 
