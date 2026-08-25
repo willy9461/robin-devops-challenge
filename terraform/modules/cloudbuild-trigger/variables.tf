@@ -67,8 +67,14 @@ variable "trigger_name_prefix" {
   default     = "robin-deploy"
 }
 
-variable "tag_pattern" {
-  description = "Regex de tags que disparan el CI/CD"
+variable "backend_tag_pattern" {
+  description = "Regex de tags que disparan el CI/CD del backend (backend-vX.Y.Z)"
   type        = string
-  default     = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+  default     = "^backend-v[0-9]+\\.[0-9]+\\.[0-9]+$"
+}
+
+variable "frontend_tag_pattern" {
+  description = "Regex de tags que disparan el CI/CD del frontend (frontend-vX.Y.Z)"
+  type        = string
+  default     = "^frontend-v[0-9]+\\.[0-9]+\\.[0-9]+$"
 }
